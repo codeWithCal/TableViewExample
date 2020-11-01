@@ -1,17 +1,35 @@
 
 import UIKit
 
-class TableViewController: UIViewController, UITableViewDataSource, UITableViewDelegate
+class TableViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate, UISearchResultsUpdating
 {
 
+	let searchController = UISearchController()
 	@IBOutlet weak var shapeTableView: UITableView!
 	
 	var shapeList = [Shape]()
+	var filteredShapes = [Shape]()
 	
 	override func viewDidLoad()
 	{
 		super.viewDidLoad()
 		initList()
+		initSearchController()
+	}
+	
+	func initSearchController()
+	{
+		searchController.loadViewIfNeeded()
+		searchController.searchResultsUpdater = self
+		searchController.obscuresBackgroundDuringPresentation = false
+		searchController.searchBar.enablesReturnKeyAutomatically = false
+		searchController.searchBar.returnKeyType = UIReturnKeyType.done
+		definesPresentationContext = true
+		
+		navigationItem.searchController = searchController
+		navigationItem.hidesSearchBarWhenScrolling = false
+		searchController.searchBar.scopeButtonTitles = ["All", "Rect", "Square", "Oct", "Circle", "Triangle"]
+		searchController.searchBar.delegate = self
 	}
 	
 	func initList()
@@ -49,6 +67,10 @@ class TableViewController: UIViewController, UITableViewDataSource, UITableViewD
 
 	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int
 	{
+		if(searchController.isActive)
+		{
+			return filteredShapes.count
+		}
 		return shapeList.count
 	}
 	
@@ -56,7 +78,17 @@ class TableViewController: UIViewController, UITableViewDataSource, UITableViewD
 	{
 		let tableViewCell = tableView.dequeueReusableCell(withIdentifier: "tableViewCellID") as! TableViewCell
 		
-		let thisShape = shapeList[indexPath.row]
+		let thisShape: Shape!
+		
+		if(searchController.isActive)
+		{
+			thisShape = filteredShapes[indexPath.row]
+		}
+		else
+		{
+			thisShape = shapeList[indexPath.row]
+		}
+		
 		
 		tableViewCell.shapeName.text = thisShape.id + " " + thisShape.name
 		tableViewCell.shapeImage.image = UIImage(named: thisShape.imageName)
@@ -77,7 +109,17 @@ class TableViewController: UIViewController, UITableViewDataSource, UITableViewD
 			
 			let tableViewDetail = segue.destination as? TableViewDetail
 			
-			let selectedShape = shapeList[indexPath.row]
+			let selectedShape: Shape!
+			
+			if(searchController.isActive)
+			{
+				selectedShape = filteredShapes[indexPath.row]
+			}
+			else
+			{
+				selectedShape = shapeList[indexPath.row]
+			}
+			
 			
 			tableViewDetail!.selectedShape = selectedShape
 			
@@ -85,5 +127,34 @@ class TableViewController: UIViewController, UITableViewDataSource, UITableViewD
 		}
 	}
 
+	
+	func updateSearchResults(for searchController: UISearchController)
+	{
+		let searchBar = searchController.searchBar
+		let scopeButton = searchBar.scopeButtonTitles![searchBar.selectedScopeButtonIndex]
+		let searchText = searchBar.text!
+		
+		filterForSearchTextAndScopeButton(searchText: searchText, scopeButton: scopeButton)
+	}
+	
+	func filterForSearchTextAndScopeButton(searchText: String, scopeButton : String = "All")
+	{
+		filteredShapes = shapeList.filter
+		{
+			shape in
+			let scopeMatch = (scopeButton == "All" || shape.name.lowercased().contains(scopeButton.lowercased()))
+			if(searchController.searchBar.text != "")
+			{
+				let searchTextMatch = shape.name.lowercased().contains(searchText.lowercased())
+				
+				return scopeMatch && searchTextMatch
+			}
+			else
+			{
+				return scopeMatch
+			}
+		}
+		shapeTableView.reloadData()
+	}
 }
 
